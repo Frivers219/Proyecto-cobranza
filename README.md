@@ -1,183 +1,205 @@
 # 📊 Cobranza Analytics
 
-> **Sistema ETL + Portal de Reportes para Gestión de Cobranza Empresarial**
-> Stack: Python · SQL Server · HTML/JS · Power BI ready
+> Pipeline de análisis de cartera de cobranza con alertas automáticas por email.
+> Stack: Python · SQLite / SQL Server · Chart.js · Gmail SMTP
 
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org)
-[![SQL Server](https://img.shields.io/badge/SQL_Server-2019+-CC2927?logo=microsoftsqlserver&logoColor=white)](https://microsoft.com/sql-server)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
----
-
-## 🎯 Descripción
-
-Pipeline completo de análisis de cartera de cobranza: desde la ingesta de datos en Excel/CSV hasta un portal HTML interactivo de reportes y consultas analíticas listas para conectar a Power BI.
-
-Diseñado para equipos de cobranza que necesitan **visibilidad en tiempo real** sobre mora, riesgo, performance de ejecutivos y efectividad de gestiones.
+[![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)](https://python.org)
+[![SQLite](https://img.shields.io/badge/SQLite-3-lightgrey?logo=sqlite)](https://sqlite.org)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ---
 
-## 🏗️ Arquitectura
-
-```
-data/
-  cartera_cobranza.xlsx       ← Fuente: exportación sistema legacy
-  gestiones_cobranza.xlsx     ← Fuente: CRM de cobranza
-  pagos_cobranza.xlsx         ← Fuente: sistema de pagos
-        │
-        ▼
-etl/
-  generate_data.py            ← Generador de datos ficticios realistas
-  etl_pipeline.py             ← ETL: Extract → Transform → Load
-        │
-        ▼
-data/cobranza.db              ← SQLite (demo) / SQL Server (producción)
-        │
-   ┌────┴────┐
-   ▼         ▼
-portal/    sql/
-index.html queries_analiticos.sql
-(Self-contained HTML)   (Vistas + queries para Power BI)
-```
-
----
-
-## 📦 Tablas generadas
-
-| Tabla | Descripción | Filas aprox. |
-|-------|-------------|-------------|
-| `dim_cartera` | Documentos de cobranza con estado, mora y riesgo | 600 |
-| `fact_gestiones` | Historial de contactos y acciones por ejecutivo | 2.460 |
-| `fact_pagos` | Pagos y cuotas registradas | 790 |
-| `resumen_clientes` | Agregado de exposición y recuperación por cliente | 298 |
-
----
-
-## 🚀 Instalación y uso
-
-### 1. Clonar e instalar dependencias
-
-```bash
-git clone https://github.com/fernandorios/cobranza-analytics
-cd cobranza-analytics
-pip install -r requirements.txt
-```
-
-### 2. Generar datos ficticios
-
-```bash
-python etl/generate_data.py
-```
-
-### 3. Ejecutar ETL
-
-**Modo demo (SQLite — no requiere SQL Server):**
-```bash
-python etl/etl_pipeline.py --mode sqlite
-```
-
-**Modo producción (SQL Server):**
-```bash
-python etl/etl_pipeline.py \
-  --mode sqlserver \
-  --server MISERVIDOR\SQLEXPRESS \
-  --db CobranzaDB \
-  --trusted
-```
-
-### 4. Abrir portal de reportes
-
-```bash
-# Simplemente abre en el navegador:
-open portal/index.html
-```
-
-### 5. Conectar Power BI
-
-1. Abrir Power BI Desktop
-2. `Obtener datos` → `SQL Server` → ingresar servidor y base de datos
-3. Seleccionar tablas: `dim_cartera`, `fact_pagos`, `resumen_clientes`
-4. Los queries en `sql/queries_analiticos.sql` incluyen vistas listas para importar
-
----
-
-## 📊 Vistas del Portal
-
-| Vista | Descripción |
-|-------|-------------|
-| **Resumen Ejecutivo** | KPIs globales, tendencia de recaudación, distribución por estado |
-| **Análisis de Cartera** | Top clientes, tramos de mora, concentración regional |
-| **Gestiones** | Efectividad por canal, resultados de contacto |
-| **Ejecutivos** | Performance individual, cartera asignada, risk score |
-
----
-
-## 🔍 Métricas calculadas
-
-- **Risk Score (0–100):** Índice compuesto basado en días de mora, segmento y estado
-- **Tasa de Recuperación:** `monto_pagado / monto_original * 100`
-- **Tasa de Contacto Exitoso:** Gestiones con resultado positivo / total gestiones
-- **Clasificación de Riesgo:** CRÍTICO / ALTO / MEDIO / BAJO por cliente
-
----
-
-## 🛠️ Stack Tecnológico
-
-| Capa | Tecnología |
-|------|-----------|
-| Generación datos | Python, Faker, NumPy, Pandas |
-| ETL | Python, Pandas, SQLAlchemy, pyodbc |
-| Base de datos | SQL Server 2019 / SQLite (demo) |
-| Portal reportes | HTML5, CSS3, Chart.js, JavaScript vanilla |
-| BI | Power BI Desktop (queries incluidos) |
-| IA Asistida | GitHub Copilot, Claude AI |
-
----
-
-## 📁 Estructura del repositorio
+## 🗂️ Estructura del Proyecto
 
 ```
 cobranza-analytics/
 ├── data/
-│   ├── cartera_cobranza.xlsx
-│   ├── gestiones_cobranza.xlsx
-│   ├── pagos_cobranza.xlsx
-│   └── cobranza.db              (generado por ETL)
+│   ├── cartera_cobranza.xlsx       ← Documentos de cobranza
+│   ├── gestiones_cobranza.xlsx     ← Historial de gestiones
+│   ├── pagos_cobranza.xlsx         ← Pagos registrados
+│   └── cobranza.db                 ← Base de datos SQLite (generada por ETL)
 ├── etl/
-│   ├── generate_data.py
-│   └── etl_pipeline.py
-├── portal/
-│   └── index.html
+│   ├── generate_data.py            ← Generador de datos ficticios
+│   └── etl_pipeline.py             ← ETL: Extract → Transform → Load
+├── alerts/
+│   ├── alert_engine.py             ← Motor de alertas y envío de email
+│   ├── setup_tarea_windows.py      ← Configuración Task Scheduler
+│   ├── config.example.json         ← Plantilla de configuración
+│   └── .gitignore                  ← Protege credenciales
 ├── sql/
-│   └── queries_analiticos.sql
-├── docs/
-│   └── diagrama_er.png          (pendiente)
-├── requirements.txt
+│   └── queries_analiticos.sql      ← Vistas y queries para Power BI
+├── portal/
+│   └── index.html                  ← Dashboard HTML interactivo
 └── README.md
 ```
 
 ---
 
-## 📋 requirements.txt
+## 🔄 Flujo del Sistema
 
 ```
-pandas>=2.0
-numpy>=1.24
-openpyxl>=3.1
-sqlalchemy>=2.0
-pyodbc>=4.0          # solo para SQL Server
+┌─────────────────────────────────────────────────────────────────┐
+│                        FUENTES DE DATOS                         │
+│   cartera.xlsx   gestiones.xlsx   pagos.xlsx   (o SQL Server)   │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      ETL PIPELINE                               │
+│                                                                 │
+│  1. EXTRACT   → Lee Excel/CSV, detecta duplicados              │
+│  2. TRANSFORM → Calcula risk_score, tramos de mora, KPIs       │
+│  3. LOAD      → Upsert inteligente en SQLite / SQL Server      │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BASE DE DATOS                                │
+│                                                                 │
+│   dim_cartera       fact_gestiones                             │
+│   fact_pagos        resumen_clientes                           │
+└──────────┬──────────────────────────┬──────────────────────────┘
+           │                          │
+           ▼                          ▼
+┌──────────────────┐       ┌──────────────────────────────────────┐
+│  PORTAL HTML     │       │         MOTOR DE ALERTAS             │
+│                  │       │                                      │
+│  Dashboard con   │       │  · Detecta cambios de tramo         │
+│  4 vistas:       │       │  · Calcula KPIs diarios             │
+│  · Resumen       │       │  · Genera email HTML                │
+│  · Cartera       │       │  · Envía por Gmail SMTP             │
+│  · Gestiones     │       │  · Evita duplicados (snapshot)      │
+│  · Ejecutivos    │       └──────────────┬───────────────────────┘
+└──────────────────┘                      │
+                                          ▼
+                             ┌────────────────────────┐
+                             │   EMAIL AUTOMÁTICO     │
+                             │   Todos los días 8 AM  │
+                             │   (Task Scheduler)     │
+                             └────────────────────────┘
 ```
 
 ---
 
-## 👤 Autor
+## 🚀 Instalación y Configuración
 
-**Fernando Ríos Figueroa** — Ingeniero Civil Industrial
-- Jefe de Proyectos TI | Analista de Datos
-- [LinkedIn](https://linkedin.com/in/fernandorios) · [GitHub](https://github.com/fernandorios)
+### 1. Requisitos previos
+
+```bash
+# Python 3.13+
+python --version
+
+# Instalar dependencias
+pip install pandas numpy openpyxl
+```
+
+### 2. Generar datos y crear la base de datos
+
+```bash
+# Generar datos ficticios (solo la primera vez)
+python etl/generate_data.py
+
+# Ejecutar ETL — crea cobranza.db en data/
+python etl/etl_pipeline.py --mode sqlite
+
+# Para SQL Server en producción:
+python etl/etl_pipeline.py --mode sqlserver --server MISERVIDOR --db CobranzaDB
+```
+
+### 3. Configurar alertas por email
+
+```bash
+# Copiar plantilla de configuración
+copy alerts/config.example.json alerts/config.json
+```
+
+Editar `alerts/config.json`:
+```json
+{
+  "gmail_user": "tucorreo@gmail.com",
+  "gmail_app_password": "abcd efgh ijkl mnop",
+  "destinatarios": ["tucorreo@gmail.com"]
+}
+```
+
+> **Cómo obtener gmail_app_password:**
+> 1. Ve a [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+> 2. Crea una nueva contraseña de aplicación
+> 3. Copia los 16 caracteres generados
+
+### 4. Probar el sistema
+
+```bash
+# Preview del email sin enviar
+python alerts/alert_engine.py --dry-run
+
+# Envío real
+python alerts/alert_engine.py
+```
+
+### 5. Automatizar (una sola vez, como Administrador)
+
+```bash
+# Ejecutar todos los días a las 8:00 AM
+python alerts/setup_tarea_windows.py --hora 08:00
+
+# Verificar que quedó configurado
+python alerts/setup_tarea_windows.py --verificar
+
+# Eliminar la tarea si es necesario
+python alerts/setup_tarea_windows.py --eliminar
+```
 
 ---
 
-## 📄 Licencia
+## 🧠 Lógica Anti-Duplicados
 
-MIT — libre para uso educativo y portafolio profesional.
+El ETL usa **upsert inteligente** — si un documento ya existe en la DB, lo actualiza en vez de duplicarlo:
+
+```
+Primera ejecución:   600 docs → INSERT 600 nuevos
+Segunda ejecución:   600 docs → UPDATE 580 existentes + INSERT 20 nuevos
+```
+
+El motor de alertas usa un **snapshot diario** para detectar solo cambios reales:
+
+```
+Lunes:   Cliente A en tramo "31-60 días"  → sin alerta (estado base)
+Martes:  Cliente A en tramo "61-90 días"  → ALERTA: subió de tramo
+```
+
+---
+
+## 📊 KPIs del Dashboard
+
+| KPI | Descripción |
+|-----|-------------|
+| **Risk Score** | 0–100 calculado por días de mora, monto y estado |
+| **Tramo de Mora** | 0-30 / 31-60 / 61-90 / 91-180 / +180 días |
+| **% Recuperado** | Pagos recibidos / Monto original |
+| **Efectividad Gestión** | Gestiones con resultado positivo / Total |
+
+---
+
+## 🔧 Variables de Entorno (Producción)
+
+Para producción se recomienda usar variables de entorno en vez de `config.json`:
+
+```bash
+# Windows
+set GMAIL_USER=tucorreo@gmail.com
+set GMAIL_APP_PASSWORD=abcdefghijklmnop
+
+# Linux/Mac
+export GMAIL_USER=tucorreo@gmail.com
+export GMAIL_APP_PASSWORD=abcdefghijklmnop
+```
+
+---
+
+## 📫 Autor
+
+**Fernando Ríos Figueroa** · Ingeniero Civil Industrial
+- 💼 [LinkedIn](https://linkedin.com/in/fernandorios)
+- 🐙 [GitHub](https://github.com/fernandorios)
+- 📍 Santiago, Chile

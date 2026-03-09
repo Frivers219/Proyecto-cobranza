@@ -23,6 +23,13 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+
+# Módulo anti-duplicados (upsert inteligente)
+try:
+    from upsert import upsert_sqlite, upsert_reporte, registrar_ejecucion
+    UPSERT_DISPONIBLE = True
+except ImportError:
+    UPSERT_DISPONIBLE = False
 import numpy as np
 
 # ── Logging ────────────────────────────────────────────────────────────────
@@ -215,20 +222,36 @@ CREATE TABLE IF NOT EXISTS resumen_clientes (
 
 
 def load_sqlite(tables: dict, db_path: str = "cobranza.db"):
-    """Carga en SQLite (modo demo/portátil)."""
+    """
+    Carga en SQLite con upsert inteligente.
+    Evita duplicados: actualiza existentes, inserta nuevos.
+    """
     log.info(f"── CARGA → SQLite: {db_path} ───────────────────────────")
     conn = sqlite3.connect(db_path)
+    stats_globales = {"insertados": 0, "actualizados": 0, "sin_cambios": 0}
 
     for name, df in tables.items():
-        df_clean = df.copy()
-        # Convertir Period/Timestamp a string para SQLite
-        for col in df_clean.columns:
-            if df_clean[col].dtype == "object":
-                pass
-            elif hasattr(df_clean[col], "dt"):
-                df_clean[col] = df_clean[col].astype(str)
-        df_clean.to_sql(name, conn, if_exists="replace", index=False)
-        log.info(f"  ✔ {name}: {len(df_clean):,} filas cargadas")
+        if UPSERT_DISPONIBLE:
+            stats = upsert_sqlite(df, name, conn)
+            upsert_reporte(name, stats)
+            for k in stats_globales:
+                stats_globales[k] += stats.get(k, 0)
+        else:
+            # Fallback: reemplazo completo si upsert.py no está disponible
+            df_clean = df.copy()
+            for col in df_clean.columns:
+                if hasattr(df_clean[col], "dt"):
+                    df_clean[col] = df_clean[col].astype(str)
+            df_clean.to_sql(name, conn, if_exists="replace", index=False)
+            log.info(f"  ✔ {name}: {len(df_clean):,} filas cargadas")
+
+    if UPSERT_DISPONIBLE:
+        registrar_ejecucion(conn, stats_globales, "sqlite")
+        log.info(
+            f"  📊 Resumen: +{stats_globales['insertados']} nuevos | "
+            f"~{stats_globales['actualizados']} actualizados | "
+            f"={stats_globales['sin_cambios']} sin cambios"
+        )
 
     conn.close()
     log.info(f"  ✅ Base de datos SQLite lista: {db_path}")
