@@ -1,13 +1,11 @@
 {
   "_comentario": "Copia este archivo como config.json y completa tus datos reales.",
 
-  "gmail_user": "tu_correo@gmail.com",
-  "gmail_app_password": "xxxx xxxx xxxx xxxx",
+  "gmail_user": "riosfigueroafernando@gmail.com",
+  "gmail_app_password": "dfha nqgi jlae eksk",
 
   "destinatarios": [
-    "tu_correo@gmail.com",
-    "jefe@empresa.com"
-  ],
+    "riosfigueroafernando@gmail.com"],
 
   "_instrucciones_gmail": [
     "1. Ve a myaccount.google.com",
