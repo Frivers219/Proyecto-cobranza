@@ -1,0 +1,18 @@
+# Configuración con credenciales — NUNCA subir a GitHub
+config.json
+*.log
+
+# Snapshot interno (se genera automáticamente)
+ultimo_snapshot.csv
+
+# Preview de email generado localmente
+preview_email.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Base de datos local
+*.db
